@@ -1,127 +1,177 @@
-#include <cmath>
-#include <iostream>
-#include <stdlib.h>
-#include <string>
-#include <tuple>
-#include <unistd.h>
-#include <vector>
+#include "cmath"
+#include "iostream"
+#include "string"
+#include "tuple"
+#include "unistd.h"
+#include "vector"
 
 class Point {
 public:
   int x;
   int y;
   int z;
+  wchar_t moji;
 
-  Point(int startX, int startY, int startZ) {
+  Point(int startX, int startY, int startZ, wchar_t sMoji) {
     x = startX;
     y = startY;
     z = startZ;
+    moji = sMoji;
   }
 
-  std::tuple<float, float, float> updatePoint(float xAngle, float yAngle,
-                                              float zAngle) {
-    int newX = x;
-    int newY = y;
-    int newZ = z;
+  std::tuple<float, float, float> rotatePoint(float alpha, float beta,
+                                              float gamma) {
+    float newX =
+        x * (cos(alpha) * cos(beta)) +
+        y * (cos(alpha) * sin(beta) * sin(gamma) - sin(alpha) * cos(gamma)) +
+        z * (cos(alpha) * sin(beta) * cos(gamma) + sin(alpha) * sin(gamma));
 
-    // x axis
-    if (xAngle) {
-      newX = x;
-      newY = y * cos(xAngle) - z * sin(xAngle);
-      newZ = y * sin(xAngle) + z * cos(xAngle);
-    }
+    float newY =
+        x * (sin(alpha) * cos(beta)) +
+        y * (sin(alpha) * sin(beta) * sin(gamma) + cos(alpha) * cos(gamma)) +
+        z * (sin(alpha) * sin(beta) * cos(gamma) - cos(alpha) * sin(gamma));
+    float newZ = x * (-sin(beta)) + y * (cos(beta) * sin(gamma)) +
+                 z * (cos(beta) * cos(gamma));
 
-    if (yAngle) {
-      newX = x * cos(yAngle) + z * sin(yAngle);
-      newY = y;
-      newZ = z * cos(yAngle) - x * sin(yAngle);
-    }
+    // float newX = x;
+    // float newY = y * (cos(alpha)) + z * (-sin(alpha));
+    // float newZ = y * (sin(alpha)) + z * (cos(alpha));
 
-    if (zAngle) {
-      newX = x * cos(zAngle) - y * sin(zAngle);
-      newY = x * sin(zAngle) + y * cos(zAngle);
-      newZ = z;
-    }
+    return std::tuple(newX, newY, newZ);
+  }
 
-    return std::make_tuple(newX, newY, newZ);
-  };
+  float getLuminance(float alpha, float beta, float gamma) {
+    float luminance = 0;
+    return luminance;
+  }
 };
 
-int main() {
-  int m = 50;
-  int n = 50;
-  int FPS = 30;
-  int xAngle = 0;
-  int yAngle = 0;
-  int zAngle = 0;
+void clearGrid(wchar_t **grid, int m, int n) {
+  for (int r = 0; r < m; r++) {
+    for (int c = 0; c < n; c++) {
+      grid[r][c] = L'　';
+    }
+  }
+}
 
-  std::string brightness = ",,..++::vvoo00XXXXPPPP####BBBB@@@@";
+void clearZBuffer(float **zBuffer, int m, int n) {
+  for (int r = 0; r < m; r++) {
+    for (int c = 0; c < n; c++) {
+      zBuffer[r][c] = 0;
+    }
+  }
+}
 
-  std::vector<Point> points = {};
+// add array for lighting
+void displayGrid(wchar_t **grid, int m, int n) {
+  for (int r = 0; r < m; r++) {
+    for (int c = 0; c < n; c++) {
+      std::wcout << grid[r][c];
+    }
+    std::wcout << "\n";
+  }
+}
 
-  points.push_back(Point(15, -15, 0));
-  points.push_back(Point(15, 15, 0));
+void updateGrid(wchar_t **grid, std::vector<Point> points, float **zBuffer,
+                std::string illumination, float z1, float z2, float alpha,
+                float beta, float gamma, int height, int width) {
 
-  points.push_back(Point(-15, -15, 0));
-  points.push_back(Point(-15, 15, 0));
+  for (int i = 0; i < points.size(); i++) {
+    std::tuple<float, float, float> newPoint =
+        points[i].rotatePoint(alpha, beta, gamma);
 
-  int **grid = new int *[m];
+    float zDistance = 1.0 / (std::get<2>(newPoint) + z2);
+    int xP = (width / 2.0) + std::get<0>(newPoint) * z1 * zDistance;
+    int yP = (height / 2.0) - std::get<1>(newPoint) * z1 * zDistance;
 
-  for (int i = 0; i < m; i++) {
-    grid[i] = new int[n];
+    // xP = (width / 2.0) + points[i].x * z1 * zDistance;
+    // yP = (height / 2.0) - points[i].y * z1 * zDistance;
+
+    if (xP < 0 || xP >= width || yP < 0 || yP >= height) {
+      continue;
+    }
+
+    if (zDistance > zBuffer[yP][xP]) {
+      zBuffer[yP][xP] = zDistance;
+      // grid[yP][xP] = points[i].moji;
+
+      float luminance = points[i].getLuminance(alpha, beta, gamma);
+      grid[yP][xP] = illumination[int(luminance) * 8];
+    }
+  }
+}
+
+std::vector<Point> cube(float side) {
+  std::vector<Point> points;
+
+  float halfSide = side / 2;
+
+  for (int r = -halfSide; r < halfSide; r++) {
+    for (int c = -halfSide; c < halfSide; c++) {
+      points.push_back(Point(r, c, halfSide, L'１'));
+      points.push_back(Point(r, c, -halfSide, L'２'));
+
+      points.push_back(Point(halfSide, r, c, L'３'));
+      points.push_back(Point(-halfSide, r, c, L'４'));
+
+      points.push_back(Point(c, halfSide, r, L'５'));
+      points.push_back(Point(c, -halfSide, r, L'６'));
+    }
   }
 
-  grid[4][20] = 1;
+  return points;
+}
+
+int main() {
+  setlocale(LC_ALL, "ja_JP.utf8");
+  int m = 50;
+  int n = 50;
+  std::string illumination = "、。：；ー〜＝！＊＃＄＠";
+  int FPS = 60;
+
+  // camera distance to origin
+  float z1 = 50;
+  // shape distance to origin
+  float z2 = 500;
+
+  float alpha = 0;
+  float beta = 0;
+  float gamma = 0;
+
+  std::vector<Point> points = cube(100);
+
+  wchar_t **grid = new wchar_t *[m];
+  float **zBuffer = new float *[m];
+
+  for (int i = 0; i < m; i++) {
+    grid[i] = new wchar_t[n];
+    zBuffer[i] = new float[n];
+  }
 
   while (true) {
     system("clear");
 
-    for (int r = 0; r < m; r++) {
-      for (int c = 0; c < n; c++) {
-        grid[r][c] = m * 2;
-      }
-    }
+    // alpha += 0.1;
+    beta += 0.1;
+    gamma += 0.1;
+    clearZBuffer(zBuffer, m, n);
+    clearGrid(grid, m, n);
 
-    zAngle += 5;
+    updateGrid(grid, points, zBuffer, illumination, z1, z2, alpha, beta, gamma,
+               m, n);
 
-    for (int i = 0; i < points.size(); i++) {
-      float radXAngle = (xAngle % 360) * M_PI / 180;
-      float radYAngle = (yAngle % 360) * M_PI / 180;
-      float radZAngle = (zAngle % 360) * M_PI / 180;
+    displayGrid(grid, m, n);
 
-      std::tuple<float, float, float> point =
-          points[i].updatePoint(radXAngle, radYAngle, radZAngle);
-
-      int pointX = (n / 2) + std::get<0>(point);
-      int pointY = (m / 2) + std::get<1>(point);
-      int pointZ = std::get<2>(point);
-
-      if (pointX >= 0 && pointX < n && pointY >= 0 && pointY < m) {
-        if (grid[pointY][pointX] == m * 2 || pointZ > grid[pointY][pointX]) {
-          grid[pointY][pointX] = pointZ;
-        }
-      }
-    }
-
-    for (int r = 0; r < m; r++) {
-      for (int c = 0; c < n; c++) {
-        if (grid[r][c] != m * 2) {
-          float percent = ((m / 2) + float(grid[r][c])) / m;
-          int result = percent * brightness.size();
-          std::cout << brightness[result];
-        }
-        std::cout << " ";
-      }
-      std::cout << "\n";
-    }
     usleep((1.0 / FPS) * pow(10, 6));
-  };
-
-  for (int i = 0; i < m; i++) {
-    delete[] grid[i];
   }
 
-  delete[] grid;
+  for (int i = 0; i < m; i++) {
+    delete grid[i];
+    delete zBuffer[i];
+  }
+
+  delete *grid;
+  delete *zBuffer;
 
   return 0;
 }
