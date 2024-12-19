@@ -33,16 +33,7 @@ public:
     float newZ = x * (-sin(beta)) + y * (cos(beta) * sin(gamma)) +
                  z * (cos(beta) * cos(gamma));
 
-    // float newX = x;
-    // float newY = y * (cos(alpha)) + z * (-sin(alpha));
-    // float newZ = y * (sin(alpha)) + z * (cos(alpha));
-
     return std::tuple(newX, newY, newZ);
-  }
-
-  float getLuminance(float alpha, float beta, float gamma) {
-    float luminance = 0;
-    return luminance;
   }
 };
 
@@ -84,19 +75,13 @@ void updateGrid(wchar_t **grid, std::vector<Point> points, float **zBuffer,
     int xP = (width / 2.0) + std::get<0>(newPoint) * z1 * zDistance;
     int yP = (height / 2.0) - std::get<1>(newPoint) * z1 * zDistance;
 
-    // xP = (width / 2.0) + points[i].x * z1 * zDistance;
-    // yP = (height / 2.0) - points[i].y * z1 * zDistance;
-
     if (xP < 0 || xP >= width || yP < 0 || yP >= height) {
       continue;
     }
 
     if (zDistance > zBuffer[yP][xP]) {
       zBuffer[yP][xP] = zDistance;
-      // grid[yP][xP] = points[i].moji;
-
-      float luminance = points[i].getLuminance(alpha, beta, gamma);
-      grid[yP][xP] = illumination[int(luminance) * 8];
+      grid[yP][xP] = points[i].moji;
     }
   }
 }
@@ -108,14 +93,14 @@ std::vector<Point> cube(float side) {
 
   for (int r = -halfSide; r < halfSide; r++) {
     for (int c = -halfSide; c < halfSide; c++) {
-      points.push_back(Point(r, c, halfSide, L'１'));
-      points.push_back(Point(r, c, -halfSide, L'２'));
+      points.push_back(Point(r, c, halfSide, L'！'));
+      points.push_back(Point(r, c, -halfSide, L'＠'));
 
-      points.push_back(Point(halfSide, r, c, L'３'));
-      points.push_back(Point(-halfSide, r, c, L'４'));
+      points.push_back(Point(halfSide, r, c, L'＃'));
+      points.push_back(Point(-halfSide, r, c, L'＄'));
 
-      points.push_back(Point(c, halfSide, r, L'５'));
-      points.push_back(Point(c, -halfSide, r, L'６'));
+      points.push_back(Point(c, halfSide, r, L'％'));
+      points.push_back(Point(c, -halfSide, r, L'＆'));
     }
   }
 
@@ -151,9 +136,9 @@ int main() {
   while (true) {
     system("clear");
 
-    // alpha += 0.1;
+    alpha += 0.1;
     beta += 0.1;
-    gamma += 0.1;
+    // gamma += 0.1;
     clearZBuffer(zBuffer, m, n);
     clearGrid(grid, m, n);
 
